@@ -2,3 +2,4 @@ opencv-python
 numpy<2.0
 deepface
 faiss-cpu
+tf-keras
