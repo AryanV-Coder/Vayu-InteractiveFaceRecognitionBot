@@ -3,3 +3,11 @@ numpy<2.0
 deepface
 faiss-cpu
 tf-keras
+fastapi
+uvicorn
+python-multipart
+sarvamai
+python-dotenv
+pyaudio
+vosk
+pydub

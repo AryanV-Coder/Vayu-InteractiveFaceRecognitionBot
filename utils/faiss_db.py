@@ -48,9 +48,17 @@ class FAISS_VectorDB():
         print(f"\n ✓ Added embeddings to FAISS index. Last faiss_id = {next_id-1}")
         return ids
 
-    def retrieveData(self):
-        pass
+    def retrieveData(self,image_path,k=5):
+        embedding = front_face_embedding_value(image_path)
 
+        # Reshape embedding to 2D array (FAISS expects shape: (n_queries, dimension))
+        embedding = np.expand_dims(embedding, axis=0)
+
+        # Search in FAISS (returns similarity scores, higher is better)
+        similarities, ids = self.index.search(embedding, k)
+
+        return similarities,ids
+    
     def save_faiss_index(self):
         """Save FAISS index to disk"""
         faiss.write_index(self.index, self.faiss_index_path)

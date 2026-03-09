@@ -47,6 +47,9 @@ class SQLite_SqlDB():
         # Best practice: always enable PRAGMA before querying if you rely on relationships
         cursor.execute("PRAGMA foreign_keys = ON;")
 
+        # Convert numpy int64 to Python int for SQLite compatibility
+        faiss_id = int(faiss_id)
+
         cursor.execute('''
             SELECT persons.name, persons.description 
             FROM persons 
@@ -61,7 +64,6 @@ class SQLite_SqlDB():
 
         # result will be a tuple like ("Rahul", "Loves guitar") or None
         if result:
-            print(f" ✓ Match Found: {result[0]}")
             return result
         else:
             print(f" ✗ No match found for FAISS ID: {faiss_id}")
@@ -112,7 +114,7 @@ class SQLite_SqlDB():
         cursor.close()
         conn.close()
 
-        print(f"✓ Added {name} to SQLite database")
+        print(f" ✓ Added {name} to SQLite database")
 
     def maxFaissId(self):
         conn = sqlite3.connect(self.db_path)

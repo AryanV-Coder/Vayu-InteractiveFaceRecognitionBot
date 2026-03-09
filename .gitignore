@@ -5,3 +5,5 @@ venv/
 *.jpeg
 *.jpg
 images/
+*.env
+.venv/
