@@ -1,11 +1,17 @@
 import asyncio
 import base64
 import os
+import sys
 import time
 import subprocess
 from dotenv import load_dotenv
 from sarvamai import AsyncSarvamAI, AudioOutput, EventResponse
-from whisper_stt import stt
+from sarvamai.core.api_error import ApiError
+from utils.sarvam_stt import stt
+
+# If you want to use whisper_stt instead of sarvam_stt, uncomment the following line and comment the line above:
+# from whisper_stt import stt
+
 
 load_dotenv()
 
@@ -57,6 +63,20 @@ async def _tts_stream_and_play(text):
 
             if hasattr(ws, "_websocket") and not ws._websocket.closed:
                 await ws._websocket.close()
+                
+    except ApiError as e:
+        if e.status_code == 429:
+            print("\n🚨 🚨 🚨 [CRITICAL ERROR] 🚨 🚨 🚨")
+            print("🛑 RATE LIMIT EXCEEDED: Sarvam AI TTS API")
+            print("👉 You have made too many text-to-speech requests. Please wait before trying again.")
+            print("Shutting down the Vayu bot safely...")
+            print("🚨 🚨 🚨 🚨 🚨 🚨 🚨 🚨 🚨 🚨 🚨\n")
+            os._exit(1)
+        else:
+            print(f"❌ Sarvam TTS API Error ({e.status_code}): {e.body}")
+            
+    except Exception as e:
+        print(f"❌ Unexpected Sarvam TTS Error: {e}")
                 
     finally:
         # Close the stdin pipe so the audio player knows the stream finished

@@ -217,9 +217,10 @@ def start_live_recognition():
     audio_thread = threading.Thread(target=audio_recording_thread, daemon=True)
     audio_thread.start()
 
-    current_name = ""
+    current_name = "unknown"
     current_description = ""
-    current_conversation = None
+    current_conversation = ConversationalLLM("unknown", "")
+    shared_state['current_conversation'] = current_conversation
 
     save_dir = "live_recognition"
     os.makedirs(save_dir, exist_ok=True)

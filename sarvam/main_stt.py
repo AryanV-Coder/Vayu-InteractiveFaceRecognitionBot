@@ -9,7 +9,7 @@ client = SarvamAI(
 )
 
 response = client.speech_to_text.transcribe(
-    file=open("sarvam/audio/t.wav", "rb"),
+    file=open("WhatsApp Audio 2026-03-11 at 02.23.26.mp3", "rb"),
     model="saaras:v3",
     mode="transcribe",
 )
