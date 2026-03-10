@@ -11,3 +11,5 @@ python-dotenv
 pyaudio
 vosk
 pydub
+groq
+faster-whisper

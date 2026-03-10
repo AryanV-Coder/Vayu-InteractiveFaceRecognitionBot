@@ -2,11 +2,12 @@ import cv2
 import time
 import os
 from utils.face_recognition_logic import FaceRecognitionLogic
+from utils.conversational_llm import ConversationalLLM
 
 
 ## Keep Threshold as 0.65, below this face is not recognised
 
-def process_frame(frame, current_name, current_description, face_recognition_class):
+def process_frame(frame, current_name, current_description, face_recognition_class, current_conversation):
     """
     Process the captured frame for face recognition.
     This function is called every 5 seconds with a frame from the camera.
@@ -39,7 +40,7 @@ def process_frame(frame, current_name, current_description, face_recognition_cla
 
     if recognised_name == current_name and recognised_description == current_description:
         print(f"🕵🏻‍♂️ Person is same : \nname - {recognised_name}, \ndescription - {recognised_description}")
-        return current_name,current_description
+        return current_name,current_description,current_conversation
     else:
         print(f'''🚧 Person is changed : 
               previous_name - {current_name}, 
@@ -47,8 +48,12 @@ def process_frame(frame, current_name, current_description, face_recognition_cla
               recognised_name - {recognised_name}, 
               recognised_description - {recognised_description}
               ''')
-        return recognised_name,recognised_description
+        
+        current_conversation = ConversationalLLM(recognised_name,recognised_description)
+        return recognised_name,recognised_description,current_conversation
 
+def sendSpeach():
+    pass
 
 def start_live_recognition():
     """
@@ -74,6 +79,7 @@ def start_live_recognition():
     
     current_name = ""
     current_description = ""
+    current_conversation = None
     
     while True:
         # Capture frame-by-frame
@@ -87,7 +93,7 @@ def start_live_recognition():
         current_time = time.time()
         if current_time - last_process_time >= process_interval:
             # Process this frame
-            current_name, current_description = process_frame(frame.copy(),current_name,current_description,face_recognition_class)
+            current_name, current_description, current_conversation = process_frame(frame.copy(),current_name,current_description,face_recognition_class,current_conversation)
             # Update the last process time
             last_process_time = current_time
             
