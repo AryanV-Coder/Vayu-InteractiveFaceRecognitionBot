@@ -13,7 +13,8 @@ import wave
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from utils.conversational_llm import ConversationalLLM
-from utils.main_pipeline import main_pipeline, speak_text
+from utils.main_pipeline import main_pipeline
+from utils.sarvam_tts import speak_text
 
 
 ## Keep Threshold as 0.65, below this face is not recognised
