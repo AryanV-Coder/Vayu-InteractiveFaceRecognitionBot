@@ -13,3 +13,6 @@ vosk
 pydub
 groq
 faster-whisper
+torch 
+torchvision 
+torchaudio

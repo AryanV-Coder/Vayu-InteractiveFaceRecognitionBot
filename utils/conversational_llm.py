@@ -4,11 +4,11 @@ import os
 
 load_dotenv()
 
-class ConversationLLM():
+class ConversationalLLM():
     def __init__(self, name, description):
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.chat_history = [
-            {"role": "system", "content": f"You are a conversational chatbot. You are made by CICR. You are in a fest event. You are talking to {name}. His descpirtion is {description}. You need to talk to the person based on his description. Your first message shoud contain a greeting with the name of the person."}
+            {"role": "system", "content": f"You are a conversational chatbot. You are made by CICR. You are in a fest event. You are talking to {name}. His descpirtion is {description}. You need to talk to the person based on his description. Your first message shoud contain a greeting with the name of the person. Your answer must be of 2 to 3 lines only."}
         ]
     
     def send_message(self,user_text):
