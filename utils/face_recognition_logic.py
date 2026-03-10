@@ -15,6 +15,14 @@ class FaceRecognitionLogic():
             print(" ❌ No Match Found in Vector DB")
             return None
 
+        # Apply threshold check
+        if similarity_score < 0.65:
+            print(f" ⚠️ Low Similarity ({similarity_score:.2f} < 0.65) - Defaulting to Unknown")
+            return {
+                "name" : "Unknown",
+                "description" : ""
+            }
+
         data = self.sql_db.retrievePersonData(faiss_id)
 
         if not data:

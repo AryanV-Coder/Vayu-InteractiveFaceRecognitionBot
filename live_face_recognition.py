@@ -7,11 +7,11 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 import cv2
 import time
 import threading
-import torch
 import pyaudio
 import numpy as np
 import wave
-from utils.face_recognition_logic import FaceRecognitionLogic
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 from utils.conversational_llm import ConversationalLLM
 from utils.main_pipeline import main_pipeline, speak_text
 
@@ -24,12 +24,19 @@ CHANNELS = 1
 RATE = 16000
 CHUNK = 512  # 32ms chunks at 16kHz
 
-# ============ LOAD SILERO VAD MODEL ============
-print("Loading Silero VAD model...")
-vad_model, _ = torch.hub.load(repo_or_dir='snakers4/silero-vad',
-                               model='silero_vad',
-                               force_reload=False)
-print("✅ VAD model loaded")
+# We defer loading VAD model to prevent the child process (spawn) from loading it unnecessarily
+vad_model = None
+
+def get_vad_model():
+    global vad_model
+    if vad_model is None:
+        import torch
+        print("Loading Silero VAD model...")
+        vad_model, _ = torch.hub.load(repo_or_dir='snakers4/silero-vad',
+                                       model='silero_vad',
+                                       force_reload=False)
+        print("✅ VAD model loaded")
+    return vad_model
 
 # ============ SHARED STATE ============
 shared_state = {
@@ -41,31 +48,38 @@ shared_state = {
 }
 
 
-def process_frame(frame, current_name, current_description, face_recognition_class, current_conversation):
-    """
-    Process the captured frame for face recognition.
-    This function is called every 5 seconds with a frame from the camera.
-    
-    Args:
-        frame: The captured frame from the camera feed
-        current_name: Currently recognised person's name
-        current_description: Currently recognised person's description
-        face_recognition_class: The FaceRecognitionLogic object (passed by reference)
-        current_conversation: The current ConversationLLM instance
-    
+# ============ FACE RECOGNITION WORKER (runs in separate process) ============
+_worker_face_logic = None
+
+def _init_worker():
+    """Initializer for the worker process — creates its own FaceRecognitionLogic.
+    Imports are deferred here so the main process doesn't force the child to re-import
+    everything during a 'spawn' start."""
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+    from utils.face_recognition_logic import FaceRecognitionLogic
+
+    global _worker_face_logic
+    _worker_face_logic = FaceRecognitionLogic()
+    print("✅ Face recognition worker initialized (separate process)")
+
+
+def _recognise_face_in_worker(image_path):
+    """Runs in the worker process. Performs face recognition and returns the result.
+    Returns dict {"name": ..., "description": ...} or None."""
+    return _worker_face_logic.recognise_face(image_path)
+
+
+def _handle_recognition_result(result, current_name, current_description, current_conversation):
+    """Handle the recognition result from the worker process (runs in main process).
+    Creates a new conversation and triggers greeting if person changed.
+
     Returns:
-        tuple: (name, description, conversation) of recognized person
+        tuple: (name, description, conversation)
     """
-    print(f"\n🔍 Processing frame at {time.strftime('%H:%M:%S')}")
-
-    save_dir = "live_recognition"
-    os.makedirs(save_dir, exist_ok=True)
-
-    save_path = os.path.join(save_dir, "current_frame.jpg")
-    cv2.imwrite(save_path, frame)
-
-    result = face_recognition_class.recognise_face(save_path)
-
     if not result:
         print("❌ No face recognized")
         return current_name, current_description, current_conversation
@@ -87,13 +101,13 @@ def process_frame(frame, current_name, current_description, face_recognition_cla
         shared_state['current_conversation'] = current_conversation
         shared_state['bot_is_speaking'] = False
 
-        # Auto-greet in background thread (so video loop isn't blocked)
-        def greet():
-            greeting = current_conversation.send_message("Hello")
-            print(f"👋 Greeting: {greeting}")
-            speak_text(greeting, shared_state)
+        # # Auto-greet in background thread (so video loop isn't blocked)
+        # def greet():
+        #     greeting = current_conversation.send_message("Hello")
+        #     print(f"👋 Greeting: {greeting}")
+        #     speak_text(greeting, shared_state)
 
-        threading.Thread(target=greet, daemon=True).start()
+        # threading.Thread(target=greet, daemon=True).start()
 
         return recognised_name, recognised_description, current_conversation
 
@@ -113,7 +127,7 @@ def audio_recording_thread():
     is_recording = False
     audio_buffer = []
     silence_counter = 0
-    silence_threshold = 16    # ~0.5s of silence to end recording
+    silence_threshold = 31    # ~1.0s of silence to end recording
     speech_threshold = 0.5
     min_speech_chunks = 10    # Minimum ~320ms to consider valid speech
 
@@ -133,7 +147,10 @@ def audio_recording_thread():
             # Run Silero VAD on chunk
             audio_int16 = np.frombuffer(audio_chunk, dtype=np.int16)
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
-            speech_prob = vad_model(torch.from_numpy(audio_float32), RATE).item()
+            
+            model = get_vad_model()
+            import torch
+            speech_prob = model(torch.from_numpy(audio_float32), RATE).item()
             is_speech = speech_prob > speech_threshold
 
             if is_speech:
@@ -178,13 +195,19 @@ def audio_recording_thread():
 
 
 def start_live_recognition():
-    """Start live camera feed, face recognition, and audio pipeline."""
-    face_recognition_class = FaceRecognitionLogic()
+    """Start live camera feed, face recognition (in separate process), and audio pipeline."""
+
+    # Use 'spawn' context. On macOS, 'fork' with TensorFlow/Metal causes sudden crashes.
+    # We use deferred imports so 'spawn' doesn't take 30s to start.
+    mp_context = multiprocessing.get_context('spawn')
+    face_pool = ProcessPoolExecutor(max_workers=1, initializer=_init_worker, mp_context=mp_context)
+    print("🚀 Face recognition process pool created (spawn mode)")
 
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("❌ Error: Could not open camera")
+        face_pool.shutdown(wait=False)
         return
 
     print("📹 Camera opened successfully")
@@ -198,12 +221,17 @@ def start_live_recognition():
     current_description = ""
     current_conversation = None
 
-    # Process first frame immediately
+    save_dir = "live_recognition"
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Submit first frame immediately
+    pending_future = None
     ret, frame = cap.read()
     if ret:
-        print("\n🎬 Processing first frame...")
-        current_name, current_description, current_conversation = process_frame(
-            frame.copy(), current_name, current_description, face_recognition_class, current_conversation)
+        print("\n🎬 Submitting first frame for recognition...")
+        save_path = os.path.join(save_dir, "current_frame.jpg")
+        cv2.imwrite(save_path, frame.copy())
+        pending_future = face_pool.submit(_recognise_face_in_worker, save_path)
 
     last_process_time = time.time()
     process_interval = 5  # seconds
@@ -215,12 +243,28 @@ def start_live_recognition():
             print("❌ Error: Failed to capture frame")
             break
 
-        # Check if 5 seconds have passed
+        # ---------- Check if a pending recognition result is ready (non-blocking) ----------
+        if pending_future is not None and pending_future.done():
+            try:
+                result = pending_future.result()
+                print(f"\n🔍 Recognition result received at {time.strftime('%H:%M:%S')}")
+                current_name, current_description, current_conversation = _handle_recognition_result(
+                    result, current_name, current_description, current_conversation)
+            except Exception as e:
+                print(f"❌ Face recognition error: {e}")
+            pending_future = None
+            
+            # Reset the timer AFTER processing finishes, so we wait a full 5s before next run
+            last_process_time = time.time()
+
+        # ---------- Submit new recognition task if interval is up AND no task pending ----------
         current_time = time.time()
-        if current_time - last_process_time >= process_interval:
-            current_name, current_description, current_conversation = process_frame(
-                frame.copy(), current_name, current_description, face_recognition_class, current_conversation)
+        if current_time - last_process_time >= process_interval and pending_future is None:
+            save_path = os.path.join(save_dir, "current_frame.jpg")
+            cv2.imwrite(save_path, frame.copy())
+            pending_future = face_pool.submit(_recognise_face_in_worker, save_path)
             last_process_time = current_time
+            print(f"\n🔍 Frame submitted for recognition at {time.strftime('%H:%M:%S')}")
 
         # Display current recognition on frame
         if current_name:
@@ -235,9 +279,10 @@ def start_live_recognition():
 
     # Cleanup
     shared_state['running'] = False
+    face_pool.shutdown(wait=False)
     cap.release()
     cv2.destroyAllWindows()
-    print("Camera released and windows closed")
+    print("Camera released, process pool shut down, and windows closed")
 
 
 if __name__ == "__main__":
