@@ -16,8 +16,8 @@ class FaceRecognitionLogic():
             return None
 
         # Apply threshold check
-        if similarity_score < 0.60:
-            print(f" ⚠️ Low Similarity ({similarity_score:.2f} < 0.60) - Defaulting to Unknown")
+        if similarity_score < 0.40:
+            print(f" ⚠️ Low Similarity ({similarity_score:.2f} < 0.40) - Defaulting to Unknown")
             return {
                 "name" : "unknown",
                 "description" : ""

@@ -17,8 +17,6 @@ from utils.main_pipeline import main_pipeline
 from utils.sarvam_tts import speak_text
 
 
-## Keep Threshold as 0.65, below this face is not recognised
-
 # ============ AUDIO CONFIGURATION ============
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
