@@ -234,7 +234,7 @@ def start_live_recognition():
         pending_future = face_pool.submit(_recognise_face_in_worker, save_path)
 
     last_process_time = time.time()
-    process_interval = 5  # seconds
+    process_interval = 3  # seconds
 
     while True:
         ret, frame = cap.read()
