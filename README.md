@@ -1,4 +1,4 @@
-# 🤖 Vayu - Interactive Face Recognition Bot [PART OF PROJECT VAYU]
+# 🤖 Vayu - Interactive Face Recognition Bot [PART OF PROJECT VAYU 🌬️]
 
 An interactive AI bot that recognizes faces in real-time and holds personalized voice conversations — built for **Converge**, the annual fest of **Jaypee Institute of Information Technology (JIIT)**, by **CICR**.
 
