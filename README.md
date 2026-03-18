@@ -219,3 +219,11 @@ from utils.sarvam_stt import stt
 # Alternative (Whisper — local, offline):
 # from whisper_stt import stt
 ```
+
+---
+
+Feel free to contribute to this project!
+
+---
+
+Author - Aryan Varshney
