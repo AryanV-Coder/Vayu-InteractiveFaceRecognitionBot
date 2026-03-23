@@ -226,4 +226,14 @@ Feel free to contribute to this project!
 
 ---
 
+## 📄 Resume Summary
+
+**Vayu – Interactive Face Recognition Bot** | Python · DeepFace · FAISS · Groq LLaMA 3.3-70B · Sarvam AI · OpenCV
+
+- Developed a real-time AI booth assistant for a college fest (JIIT Converge) that identifies attendees via FAISS-based cosine-similarity search over Facenet512 face embeddings and delivers fully personalized spoken responses using a Groq LLM.
+- Built an end-to-end voice pipeline (Sarvam AI Speech-to-Text → LLaMA 3.3-70B → Sarvam AI Text-to-Speech over WebSocket) with streaming audio playback that begins speaking within ~0.4 seconds of the first audio chunk arriving.
+- Engineered concurrent execution using Python's `ProcessPoolExecutor` to run face recognition in an isolated process alongside live camera capture (OpenCV) and a Silero VAD audio thread, ensuring smooth, non-blocking operation.
+
+---
+
 Author - Aryan Varshney
