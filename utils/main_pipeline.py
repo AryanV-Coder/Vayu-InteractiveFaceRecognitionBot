@@ -12,7 +12,7 @@ load_dotenv()
 
 def main_pipeline(audio_path, shared_state):
     """
-    Process recorded audio: STT (Whisper) → LLM (Groq) → TTS (Sarvam)
+    Process recorded audio: STT (Sarvam) → LLM (Groq) → TTS (Sarvam)
 
     Args:
         audio_path: Path to the recorded audio WAV file
@@ -24,7 +24,7 @@ def main_pipeline(audio_path, shared_state):
         print("⚠️  No conversation context - waiting for face recognition...")
         return
 
-    # Step 1: STT - Whisper
+    # Step 1: STT - Sarvam
     try:
         user_text = stt(audio_path)
     except Exception as e:
