@@ -2,11 +2,13 @@
 
 An interactive AI bot that recognizes faces in real-time and holds personalized voice conversations — built for **Converge**, the annual fest of **Jaypee Institute of Information Technology (JIIT)**, by **CICR**.
 
+> **⚠️ Important Notice:** The core functionality of this project is contained exclusively within the `utils/` folder and the individual `.py` files in the root directory. All other files and folders are simply for testing, rough work, and experimental purposes.
+
 ---
 
 ## 🎯 What It Does
 
-Vayu is a live, camera-powered AI assistant (codename: **J.A.R.V.I.S. Protocol**) deployed at a fest booth. It does two things simultaneously:
+Vayu is a live, camera-powered AI assistant (codename: **J.A.R.V.I.S.** for the fest only) deployed at a fest booth. It does two things simultaneously:
 
 1. **Face Recognition** — Identifies people standing in front of the camera using a FAISS vector database of pre-registered face embeddings (powered by DeepFace + Facenet512).
 2. **Interactive Voice Chatbot** — Listens to the user's voice, transcribes it, generates a witty AI response personalized to the recognized person, and speaks it back — all in real-time with streaming audio playback.
